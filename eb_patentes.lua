@@ -1,12 +1,116 @@
--- EB PATENTE CHANGER - COR GLOBAL + FIX DO N/A
--- Creator: VG RLK
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 
--- Tabela de Patentes
+-- ================= SISTEMA DE KEY SEGURO =================
+-- Tempo em segundos (Ex: 3600 = 1 hora, 86400 = 1 dia, 999999999 = Permanente)
+local ValidKeys = {
+    ["NATHAN22"] = 3600,
+    ["VIPZEP"] = 999999999
+}
+
+local KEY_FILE = "VG_RLK_KeySystem_V2.json"
+local authorized = false
+
+-- Função para ler e verificar se o tempo da key ainda é válido
+local function checkSavedKey()
+    if readfile and pcall(function() return readfile(KEY_FILE) end) then
+        local content = readfile(KEY_FILE)
+        local success, data = pcall(function()
+            -- O formato salvo será: "Chave|TimestampDeExpiracao"
+            local sep = content:find("|")
+            if sep then
+                local expiration = tonumber(content:sub(sep + 1))
+                if expiration and os.time() < expiration then
+                    return true
+                end
+            end
+        end)
+        if success and data then
+            return true
+        end
+    end
+    return false
+end
+
+if checkSavedKey() then
+    authorized = true
+else
+    local KeyGui = Instance.new("ScreenGui")
+    KeyGui.Name = "VG_RLK_KeySystem"
+    KeyGui.ResetOnSpawn = false
+    KeyGui.Parent = PlayerGui
+
+    local KeyFrame = Instance.new("Frame")
+    KeyFrame.Size = UDim2.new(0, 300, 0, 160)
+    KeyFrame.Position = UDim2.new(0.5, -150, 0.5, -80)
+    KeyFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    KeyFrame.BorderSizePixel = 0
+    KeyFrame.Parent = KeyGui
+
+    local KeyTitle = Instance.new("TextLabel")
+    KeyTitle.Size = UDim2.new(1, 0, 0, 40)
+    KeyTitle.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+    KeyTitle.Text = "🔑 SISTEMA DE KEY"
+    KeyTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    KeyTitle.TextSize = 16
+    KeyTitle.Font = Enum.Font.GothamBold
+    KeyTitle.Parent = KeyFrame
+
+    local KeyBox = Instance.new("TextBox")
+    KeyBox.Size = UDim2.new(1, -20, 0, 40)
+    KeyBox.Position = UDim2.new(0, 10, 0, 55)
+    KeyBox.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+    KeyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    KeyBox.PlaceholderText = "Insira sua Key aqui..."
+    KeyBox.Text = ""
+    KeyBox.TextSize = 14
+    KeyBox.Font = Enum.Font.Gotham
+    KeyBox.Parent = KeyFrame
+
+    local SubmitBtn = Instance.new("TextButton")
+    SubmitBtn.Size = UDim2.new(1, -20, 0, 35)
+    SubmitBtn.Position = UDim2.new(0, 10, 0, 105)
+    SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+    SubmitBtn.Text = "VERIFICAR KEY"
+    SubmitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SubmitBtn.TextSize = 14
+    SubmitBtn.Font = Enum.Font.GothamBold
+    SubmitBtn.Parent = KeyFrame
+
+    local function verificar()
+        local digitada = KeyBox.Text
+        local duracao = ValidKeys[digitada]
+        
+        if duracao then
+            -- Calcula o tempo exato que vai expirar baseado no horário atual do sistema
+            local expirationTime = os.time() + duracao
+            if writefile then
+                pcall(function() 
+                    writefile(KEY_FILE, digitada .. "|" .. expirationTime) 
+                end)
+            end
+            KeyGui:Destroy()
+            authorized = true
+        else
+            SubmitBtn.Text = "KEY INVÁLIDA!"
+            SubmitBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+            task.wait(1)
+            SubmitBtn.Text = "VERIFICAR KEY"
+            SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+        end
+    end
+
+    SubmitBtn.MouseButton1Click:Connect(verificar)
+    KeyBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then verificar() end
+    end)
+
+    repeat task.wait() until authorized
+end
+
+-- ================= SEU SCRIPT PRINCIPAL =================
 local Patentes = {
     {Tag = "[ER]", Nome = "Elite Real", Cor = Color3.fromRGB(255, 50, 50)},
     {Tag = "[ES]", Nome = "Elite Secreta", Cor = Color3.fromRGB(255, 215, 0)},
@@ -23,10 +127,9 @@ local Patentes = {
     {Tag = "[ASP]", Nome = "Aspirante a Oficial", Cor = Color3.fromRGB(150, 100, 255)},
 }
 
-local lastPatente = Patentes[13] -- Padrão ASP
+local lastPatente = Patentes[13]
 local labelsCache = {}
 
--- FUNÇÃO: Mapear todos os textos do overhead
 local function ScanForLabels()
     local char = Player.Character
     if not char then return end
@@ -40,7 +143,6 @@ local function ScanForLabels()
             if obj:IsA("TextLabel") then
                 local bg = obj:FindFirstAncestorWhichIsA("BillboardGui")
                 if bg then
-                    -- Verifica se o overhead pertence ao seu personagem
                     local belongsToPlayer = false
                     if bg:IsDescendantOf(char) then
                         belongsToPlayer = true
@@ -51,20 +153,12 @@ local function ScanForLabels()
                     if belongsToPlayer and obj.Text ~= "" then
                         local txt = obj.Text
                         local isRank = false
-                        
-                        -- Identifica se ESSA LINHA ESPECÍFICA é a da patente
                         if txt:find("%[") or txt:find("Aspirante") or txt:find("Tenente") or txt:find("Capitão") or txt:find("Coronel") or txt:find("Major") or txt:find("General") or txt:find("Elite") or txt:find("Recruta") or txt:find("Soldado") or txt:find("Cabo") or txt:find("Sargento") or txt:find(lastPatente.Tag) then
-                            -- GARANTE QUE NÃO É O NICK E ABSOLUTAMENTE NÃO É O N/A
                             if not txt:find(Player.Name) and not txt:find(Player.DisplayName) and not txt:find("N/A") and not txt:find("n/a") then
                                 isRank = true
                             end
                         end
-                        
-                        -- Salva a linha no cache e marca se ela é a da patente ou não
-                        table.insert(newCache, {
-                            instance = obj,
-                            isRankLine = isRank
-                        })
+                        table.insert(newCache, {instance = obj, isRankLine = isRank})
                     end
                 end
             end
@@ -73,39 +167,30 @@ local function ScanForLabels()
     labelsCache = newCache
 end
 
--- LOOP DE RADAR: Atualiza o mapeamento a cada segundo (caso o jogo recrie o overhead)
 task.spawn(function()
     while task.wait(1) do
         ScanForLabels()
     end
 end)
 
--- LOOP TRATOR: Trava a COR em tudo e o TEXTO só na patente
 RunService.RenderStepped:Connect(function()
     if not lastPatente then return end
     local textoCerto = lastPatente.Tag .. " " .. lastPatente.Nome
-    
     for _, data in ipairs(labelsCache) do
         local label = data.instance
         if label and label.Parent then
-            
-            -- REGRA 1: TODO MUNDO RECEBE A COR DA PATENTE SELECIONADA (Nick, N/A, Patente, Sombra)
             if label.TextColor3 ~= lastPatente.Cor then
-                label.TextColor3 = lastPatente.Cor
+                label.TextColor3 = lastRPatenteCor or lastPatente.Cor
             end
-            
-            -- REGRA 2: APENAS A LINHA DA PATENTE RECEBE O TEXTO NOVO
             if data.isRankLine then
                 if label.Text ~= textoCerto then
                     label.Text = textoCerto
                 end
             end
-            
         end
     end
 end)
 
--- ================= MENU GUI =================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "VG_RLK_Patente_Menu"
 ScreenGui.ResetOnSpawn = false
@@ -165,7 +250,7 @@ for _, patente in ipairs(Patentes) do
     btn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
     btn.BorderSizePixel = 0
     btn.Text = ""
-    btn.Parent = ScrollFrame
+    btn.Parent = ScrollForm or ScrollFrame
 
     local bar = Instance.new("Frame")
     bar.Size = UDim2.new(0, 4, 1, 0)
@@ -185,8 +270,7 @@ for _, patente in ipairs(Patentes) do
 
     btn.MouseButton1Click:Connect(function()
         lastPatente = patente
-        ScanForLabels() -- Força achar todos os textos na hora
-        
+        ScanForLabels()
         btn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
         task.wait(0.2)
         btn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
@@ -207,5 +291,4 @@ CloseBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = false
 end)
 
-print("✅ VG RLK - Cor Global + FIX do N/A Carregado!")
-
+print("✅ VG RLK - Key com Tempo Real Carregada!")
