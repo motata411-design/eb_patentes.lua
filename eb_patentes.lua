@@ -1,5 +1,5 @@
 -- ==========================================
--- PATENTES E DIVISÕES EB (KAIZER V18) + CORREÇÕES DEFINITIVAS
+-- PATENTES E DIVISÕES EB (KAIZER V18) + DRONE PIXEL + KART
 -- ==========================================
 
 local Players = game:GetService("Players")
@@ -113,8 +113,6 @@ RunService.RenderStepped:Connect(function()
     local textoRank = lastPatente.Tag .. " " .. lastPatente.Nome
     local textoDiv = lastDivisao.Tag == "[N/A]" and "N/A" or (lastDivisao.Tag .. " " .. lastDivisao.Nome)
     
-    -- REGRA DE PRIORIDADE DE COR:
-    -- Se a Divisão for N/A, usa a cor da Patente. Se for qualquer outra Divisão, ela domina a cor de tudo.
     local corAplicada = (lastDivisao.Tag ~= "[N/A]") and lastDivisao.Cor or lastPatente.Cor
 
     for _, data in ipairs(labelsCache) do
@@ -185,12 +183,9 @@ local clickTime = 0
 ToggleBtn.MouseButton1Down:Connect(function() clickTime = tick() end)
 ToggleBtn.MouseButton1Up:Connect(function()
     if tick() - clickTime < 0.3 then
-        -- Usando RightShift para não conflitar com analógico
         vim:SendKeyEvent(true, Enum.KeyCode.RightShift, false, game)
         task.wait(0.05)
         vim:SendKeyEvent(false, Enum.KeyCode.RightShift, false, game)
-        
-        -- Remove o foco da interface do celular para liberar o botão de andar
         GuiService.SelectedObject = nil 
     end
 end)
@@ -205,7 +200,7 @@ local Window = Fluent:CreateWindow({
     Size = UDim2.fromOffset(500, 350),
     Acrylic = false, 
     Theme = "Dark",
-    MinimizeKey = Enum.KeyCode.RightShift -- Combinando com a nova tecla segura
+    MinimizeKey = Enum.KeyCode.RightShift
 })
 
 local Tabs = {
@@ -243,7 +238,6 @@ Tabs.Main:AddButton({ Title = "Aplicar Cópia", Callback = function()
     
     if target and target.Character then
         local foundPat, foundDiv = false, false
-        -- Agora ele procura no mapa inteiro e na sua própria tela por tags que pertençam ao alvo
         local locaisBusca = {target.Character, PlayerGui}
         
         for _, area in ipairs(locaisBusca) do
@@ -251,7 +245,6 @@ Tabs.Main:AddButton({ Title = "Aplicar Cópia", Callback = function()
                 for _, obj in ipairs(area:GetDescendants()) do
                     if obj:IsA("TextLabel") and obj.Text ~= "" then
                         local bg = obj:FindFirstAncestorWhichIsA("BillboardGui")
-                        -- Confirma se a tag está apontando para o jogador certo
                         if bg and (bg:IsDescendantOf(target.Character) or (bg.Adornee and bg.Adornee:IsDescendantOf(target.Character))) then
                             local txt = obj.Text:lower()
                             if not foundPat then
@@ -288,7 +281,7 @@ Tabs.TP:AddButton({ Title = "Teleportar para Jogador", Callback = function()
 end})
 Tabs.TP:AddButton({ Title = "🔄 Atualizar Lista de Jogadores", Callback = function() TPDrop:SetValues(getPlayerNames()) end })
 
-Tabs.TP:AddButton({ Title = "📍 Pegar Tool de Click TP (Qualquer Lugar)", Description = "Equipe a ferramenta e clique em qualquer lugar da tela para se teleportar.", Callback = function()
+Tabs.TP:AddButton({ Title = "📍 Pegar Tool de Click TP", Description = "Equipe a ferramenta e clique em qualquer lugar da tela para se teleportar.", Callback = function()
     local tpTool = Instance.new("Tool")
     tpTool.Name = "Click TP"
     tpTool.RequiresHandle = false
@@ -300,7 +293,7 @@ Tabs.TP:AddButton({ Title = "📍 Pegar Tool de Click TP (Qualquer Lugar)", Desc
             Player.Character.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
         end
     end)
-    Fluent:Notify({ Title = "Click TP Gerado!", Content = "Abra seu inventário, equipe e clique no chão para teleportar.", Duration = 4 })
+    Fluent:Notify({ Title = "Click TP Gerado!", Content = "Abra seu inventário, equipe e clique no chão.", Duration = 4 })
 end})
 
 -- ================= ABA 3: ÚTEIS =================
@@ -315,6 +308,7 @@ Tabs.Utils:AddSlider("JumpPowerSlider", { Title = "Pulo (JumpPower)", Default = 
     end
 })
 
+-- KART RESTAURADO
 Tabs.Utils:AddButton({ Title = "🏎️ Gerar Mini Kart (Anti-Kick)", Description = "Equipe no inventário para andar de kart.", Callback = function()
     local tool = Instance.new("Tool")
     tool.Name = "Mini Kart"
@@ -330,7 +324,6 @@ Tabs.Utils:AddButton({ Title = "🏎️ Gerar Mini Kart (Anti-Kick)", Descriptio
         local humanoid = char:FindFirstChild("Humanoid")
         if not hrp or not humanoid then return end
 
-        -- HUD de Velocidade
         speedGui = Instance.new("ScreenGui")
         speedGui.Parent = PlayerGui
         local kmText = Instance.new("TextLabel")
@@ -347,14 +340,11 @@ Tabs.Utils:AddButton({ Title = "🏎️ Gerar Mini Kart (Anti-Kick)", Descriptio
         corner.Parent = kmText
         kmText.Parent = speedGui
 
-        -- MODELO DO KART
         kartModel = Instance.new("Model")
         kartModel.Name = "CustomKart"
 
-        -- CFrame de referência baseado na posição atual do jogador
         local rootCFrame = hrp.CFrame
 
-        -- 1. Chassi
         local chassis = Instance.new("Part")
         chassis.Name = "Chassis"
         chassis.Size = Vector3.new(4, 0.4, 6)
@@ -365,7 +355,6 @@ Tabs.Utils:AddButton({ Title = "🏎️ Gerar Mini Kart (Anti-Kick)", Descriptio
         chassis.Parent = kartModel
         kartModel.PrimaryPart = chassis
 
-        -- 2. Corpo do Veículo (Vermelho)
         local corpo = Instance.new("Part")
         corpo.Size = Vector3.new(3.5, 0.8, 3.5)
         corpo.Color = Color3.fromRGB(200, 30, 30)
@@ -379,7 +368,6 @@ Tabs.Utils:AddButton({ Title = "🏎️ Gerar Mini Kart (Anti-Kick)", Descriptio
         weldCorpo.Part1 = corpo
         weldCorpo.Parent = chassis
 
-        -- 3. Banco / Encosto
         local banco = Instance.new("Part")
         banco.Size = Vector3.new(2.6, 1.4, 0.4)
         banco.Color = Color3.fromRGB(10, 10, 10)
@@ -393,12 +381,11 @@ Tabs.Utils:AddButton({ Title = "🏎️ Gerar Mini Kart (Anti-Kick)", Descriptio
         weldBanco.Part1 = banco
         weldBanco.Parent = chassis
 
-        -- 4. Rodas
         local offsetRodas = {
-            Vector3.new(2.1, 0, 1.8),   -- Traseira Direita
-            Vector3.new(-2.1, 0, 1.8),  -- Traseira Esquerda
-            Vector3.new(2.1, 0, -1.8),  -- Frontal Direita
-            Vector3.new(-2.1, 0, -1.8)   -- Frontal Esquerda
+            Vector3.new(2.1, 0, 1.8),
+            Vector3.new(-2.1, 0, 1.8),
+            Vector3.new(2.1, 0, -1.8),
+            Vector3.new(-2.1, 0, -1.8)
         }
 
         for _, offset in ipairs(offsetRodas) do
@@ -408,7 +395,6 @@ Tabs.Utils:AddButton({ Title = "🏎️ Gerar Mini Kart (Anti-Kick)", Descriptio
             roda.Color = Color3.fromRGB(15, 15, 15)
             roda.Material = Enum.Material.SmoothPlastic
             roda.CanCollide = false
-            -- Rotaciona a roda 90 graus para ficar na orientação horizontal de pneu
             roda.CFrame = chassis.CFrame * CFrame.new(offset) * CFrame.Angles(0, 0, math.rad(90))
             roda.Parent = kartModel
 
@@ -420,7 +406,6 @@ Tabs.Utils:AddButton({ Title = "🏎️ Gerar Mini Kart (Anti-Kick)", Descriptio
 
         kartModel.Parent = char
 
-        -- Soldar o kart fixo no jogador
         local mainWeld = Instance.new("Weld")
         mainWeld.Part0 = hrp
         mainWeld.Part1 = chassis
@@ -429,7 +414,6 @@ Tabs.Utils:AddButton({ Title = "🏎️ Gerar Mini Kart (Anti-Kick)", Descriptio
 
         humanoid.Sit = true
 
-        -- Movimento do Kart
         bv = Instance.new("BodyVelocity")
         bv.MaxForce = Vector3.new(100000, 0, 100000)
         bv.Parent = hrp
@@ -460,6 +444,221 @@ Tabs.Utils:AddButton({ Title = "🏎️ Gerar Mini Kart (Anti-Kick)", Descriptio
     Fluent:Notify({ Title = "Kart Estabilizado", Content = "Equipe o item para testar.", Duration = 4 })
 end})
 
+-- ================= DRONE 100% MOBILE & COM MODELO CUSTOMIZADO =================
+Tabs.Utils:AddButton({ Title = "🚁 Gerar Drone Mobile (Pixel)", Description = "Equipe para pilotar. Modelo idêntico à imagem de referência.", Callback = function()
+    local tool = Instance.new("Tool")
+    tool.Name = "Drone"
+    tool.RequiresHandle = false
+    tool.Parent = Player.Backpack
+
+    local droneGui, goBtn, droneModel, droneRoot, droneSound, upBtn, downBtn
+    local flightLoop
+    local isFlying = false
+    local flySpeed = 60
+    local isAscending = false
+    local isDescending = false
+
+    local function stopDrone()
+        isFlying = false
+        if goBtn then 
+            goBtn.Text = "GO (VOAR)"
+            goBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+        end
+        if upBtn then upBtn.Visible = false end
+        if downBtn then downBtn.Visible = false end
+        
+        if flightLoop then flightLoop:Disconnect() flightLoop = nil end
+        if droneSound then droneSound:Destroy() droneSound = nil end
+        if droneModel then droneModel:Destroy() droneModel = nil end
+        
+        local cam = workspace.CurrentCamera
+        local char = Player.Character
+        if char then 
+            if char:FindFirstChild("Humanoid") then
+                cam.CameraSubject = char.Humanoid
+            end
+            if char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.Anchored = false
+            end
+        end
+    end
+
+    tool.Equipped:Connect(function()
+        if droneGui then return end
+        
+        droneGui = Instance.new("ScreenGui")
+        droneGui.Name = "DroneHUD_Mobile"
+        droneGui.ResetOnSpawn = false
+        droneGui.Parent = PlayerGui
+
+        -- Botão GO/STOP agora posicionado mais para a direita (esquivando do centro)
+        goBtn = Instance.new("TextButton")
+        goBtn.Size = UDim2.new(0, 140, 0, 45)
+        goBtn.Position = UDim2.new(0.70, -70, 0.15, 0) -- Ajustado para direita e topo
+        goBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+        goBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        goBtn.Font = Enum.Font.GothamBold
+        goBtn.TextSize = 16
+        goBtn.Text = "GO (VOAR)"
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0.3, 0)
+        corner.Parent = goBtn
+        goBtn.Parent = droneGui
+
+        -- Botão Subir (Mobile)
+        upBtn = Instance.new("TextButton")
+        upBtn.Size = UDim2.new(0, 60, 0, 60)
+        upBtn.Position = UDim2.new(0.85, -30, 0.45, -35)
+        upBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        upBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        upBtn.Font = Enum.Font.GothamBold
+        upBtn.TextSize = 24
+        upBtn.Text = "⬆️"
+        upBtn.Visible = false
+        local uCorner = Instance.new("UICorner")
+        uCorner.CornerRadius = UDim.new(0.5, 0)
+        uCorner.Parent = upBtn
+        upBtn.Parent = droneGui
+
+        -- Botão Descer (Mobile)
+        downBtn = Instance.new("TextButton")
+        downBtn.Size = UDim2.new(0, 60, 0, 60)
+        downBtn.Position = UDim2.new(0.85, -30, 0.45, 35)
+        downBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        downBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        downBtn.Font = Enum.Font.GothamBold
+        downBtn.TextSize = 24
+        downBtn.Text = "⬇️"
+        downBtn.Visible = false
+        local dCorner = Instance.new("UICorner")
+        dCorner.CornerRadius = UDim.new(0.5, 0)
+        dCorner.Parent = downBtn
+        downBtn.Parent = droneGui
+
+        upBtn.MouseButton1Down:Connect(function() isAscending = true end)
+        upBtn.MouseButton1Up:Connect(function() isAscending = false end)
+        downBtn.MouseButton1Down:Connect(function() isDescending = true end)
+        downBtn.MouseButton1Up:Connect(function() isDescending = false end)
+
+        goBtn.MouseButton1Click:Connect(function()
+            if not isFlying then
+                isFlying = true
+                goBtn.Text = "STOP (VOLTAR)"
+                goBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+                upBtn.Visible = true
+                downBtn.Visible = true
+
+                local char = Player.Character
+                if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+                
+                char.HumanoidRootPart.Anchored = true
+
+                -- CRIANDO O MODELO DO DRONE BASEADO NA REFERÊNCIA PIXEL ART
+                droneModel = Instance.new("Model")
+                droneModel.Name = "KaizerDronePixel"
+                droneModel.Parent = workspace
+
+                -- Base invisível para controle de movimento
+                droneRoot = Instance.new("Part")
+                droneRoot.Name = "Root"
+                droneRoot.Size = Vector3.new(2, 1, 2)
+                droneRoot.Transparency = 1
+                droneRoot.Anchored = true
+                droneRoot.CanCollide = false
+                droneRoot.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, 6, -3)
+                droneRoot.Parent = droneModel
+                droneModel.PrimaryPart = droneRoot
+
+                -- Função auxiliar para montar blocos grudados no Root
+                local function createBlock(name, size, color, offset)
+                    local p = Instance.new("Part")
+                    p.Name = name
+                    p.Size = size
+                    p.Color = color
+                    p.Material = Enum.Material.SmoothPlastic
+                    p.Anchored = false
+                    p.CanCollide = false
+                    p.CFrame = droneRoot.CFrame * CFrame.new(offset)
+                    p.Parent = droneModel
+                    local weld = Instance.new("WeldConstraint")
+                    weld.Part0 = droneRoot
+                    weld.Part1 = p
+                    weld.Parent = droneRoot
+                    return p
+                end
+
+                -- Corpo principal (Azul escuro)
+                createBlock("CorpoMain", Vector3.new(1.2, 0.4, 1.8), Color3.fromRGB(13, 82, 214), Vector3.new(0, 0, 0))
+                -- Cabine/Vidro (Azul claro)
+                createBlock("Vidro", Vector3.new(0.8, 0.5, 1.2), Color3.fromRGB(115, 185, 255), Vector3.new(0, 0.15, -0.2))
+                -- Ponta traseira / Frente
+                createBlock("DetalheTrás", Vector3.new(0.6, 0.3, 0.6), Color3.fromRGB(20, 20, 20), Vector3.new(0, 0, 1.1))
+
+                -- Posições das 4 hastes/rotores
+                local posicoes = {
+                    Vector3.new(1.2, 0, -1.2), -- Frente Direita
+                    Vector3.new(-1.2, 0, -1.2), -- Frente Esquerda
+                    Vector3.new(1.2, 0, 1.2), -- Traz Direita
+                    Vector3.new(-1.2, 0, 1.2) -- Traz Esquerda
+                }
+
+                for i, pos in ipairs(posicoes) do
+                    -- Hastes (Cinza escuro) ligando ao centro
+                    createBlock("Haste"..i, Vector3.new(1.5, 0.2, 0.2), Color3.fromRGB(50, 50, 50), Vector3.new(pos.X/1.5, 0, pos.Z/1.5))
+                    
+                    -- Rotor (Base Branca/Azul clara simulando o círculo)
+                    createBlock("Rotor"..i, Vector3.new(1, 0.1, 1), Color3.fromRGB(220, 230, 255), pos)
+                    
+                    -- Miolo Preto do Rotor (A cruz/ponto preto do meio)
+                    createBlock("Miolo"..i, Vector3.new(0.4, 0.15, 0.4), Color3.fromRGB(10, 10, 10), pos)
+                end
+
+                -- Som
+                droneSound = Instance.new("Sound")
+                droneSound.SoundId = "rbxassetid://9114397531" 
+                droneSound.Looped = true
+                droneSound.Volume = 0.5
+                droneSound.Parent = droneRoot
+                droneSound:Play()
+
+                -- Câmera acompanhando o Root do Drone
+                local cam = workspace.CurrentCamera
+                cam.CameraType = Enum.CameraType.Custom
+                cam.CameraSubject = droneRoot
+
+                -- Controle e Movimento
+                flightLoop = RunService.RenderStepped:Connect(function(dt)
+                    if not droneRoot or not droneRoot.Parent then return end
+                    
+                    local moveVector = Vector3.new(0,0,0)
+                    if char and char:FindFirstChild("Humanoid") then
+                        moveVector = char.Humanoid.MoveDirection
+                    end
+
+                    local vertical = 0
+                    if isAscending then vertical = vertical + 1 end
+                    if isDescending then vertical = vertical - 1 end
+
+                    local finalMove = moveVector * flySpeed * dt
+                    local verticalMove = Vector3.new(0, vertical * (flySpeed * 0.7) * dt, 0)
+
+                    droneRoot.CFrame = droneRoot.CFrame + finalMove + verticalMove
+                end)
+
+            else
+                stopDrone()
+            end
+        end)
+    end)
+
+    tool.Unequipped:Connect(function()
+        if droneGui then droneGui:Destroy() droneGui = nil end
+        stopDrone()
+    end)
+
+    Fluent:Notify({ Title = "Drone Pixel", Content = "Equipe a Tool para ver seu novo drone.", Duration = 4 })
+end})
+
 Tabs.Utils:AddButton({ Title = "Rejoin (Reconectar)", Callback = function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, Player) end })
 Tabs.Utils:AddButton({ Title = "Server Hop", Callback = function()
     local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
@@ -473,4 +672,12 @@ end})
 
 -- ================= ABA 4: CONFIGURAÇÕES =================
 Tabs.Settings:AddDropdown("ThemeDrop", { Title = "Tema da Interface", Values = {"Light", "Dark", "Darker", "Aqua", "Amethyst", "Rose"}, Multi = false, Default = 2 }):OnChanged(function(Value) Fluent:SetTheme(Value) end)
+
+-- ================= NOTIFICAÇÃO DE INÍCIO =================
+Fluent:Notify({
+    Title = "Bem-vindo!",
+    Content = "E O KAIZER BB",
+    Duration = 5
+})
+
 Window:SelectTab(1)
