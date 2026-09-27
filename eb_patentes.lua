@@ -1,5 +1,5 @@
 -- ==========================================
--- PATENTES E DIVISÕES EB (KAIZER V18) + KEY SYSTEM + F1 KART CORRIGIDO
+-- PATENTES E DIVISÕES EB (KAIZER V18) + KEY SYSTEM + F1 KART + DRONE + DISCORD
 -- ==========================================
 
 local Players = game:GetService("Players")
@@ -12,18 +12,28 @@ local HttpService = game:GetService("HttpService")
 local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 
+-- Tenta pegar o ID único do dispositivo (se o executor suportar)
+local function getHWID()
+    local success, result = pcall(function() return game:GetService("RbxAnalyticsService"):GetClientId() end)
+    return success and result or "HWID_DESCONHECIDO_" .. Player.UserId
+end
+
+local MyHWID = getHWID()
+
 -- ========================================================
--- 🔑 SISTEMA DE KEY INTEGRADO
+-- 🔑 SISTEMA DE KEY INTEGRADO (UI)
 -- ========================================================
 
 local KeySystemGui = Instance.new("ScreenGui")
 KeySystemGui.Name = "KaizerKeySystem"
 KeySystemGui.ResetOnSpawn = false
-KeySystemGui.Parent = PlayerGui
+-- Proteção básica contra destruição simples da UI
+local guiCoreSuccess = pcall(function() KeySystemGui.Parent = game:GetService("CoreGui") end)
+if not guiCoreSuccess then KeySystemGui.Parent = PlayerGui end
 
 local KeyFrame = Instance.new("Frame")
-KeyFrame.Size = UDim2.new(0, 320, 0, 200)
-KeyFrame.Position = UDim2.new(0.5, -160, 0.5, -100)
+KeyFrame.Size = UDim2.new(0, 320, 0, 260) -- Aumentado para caber o Discord
+KeyFrame.Position = UDim2.new(0.5, -160, 0.5, -130)
 KeyFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 KeyFrame.BorderSizePixel = 0
 KeyFrame.Parent = KeySystemGui
@@ -43,7 +53,7 @@ KeyTitle.Parent = KeyFrame
 
 local KeyInput = Instance.new("TextBox")
 KeyInput.Size = UDim2.new(0.85, 0, 0, 40)
-KeyInput.Position = UDim2.new(0.075, 0, 0.3, 0)
+KeyInput.Position = UDim2.new(0.075, 0, 0.22, 0)
 KeyInput.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
 KeyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 KeyInput.PlaceholderText = "Insira sua Key aqui..."
@@ -56,7 +66,7 @@ KeyInput.Parent = KeyFrame
 
 local SubmitBtn = Instance.new("TextButton")
 SubmitBtn.Size = UDim2.new(0.85, 0, 0, 40)
-SubmitBtn.Position = UDim2.new(0.075, 0, 0.6, 0)
+SubmitBtn.Position = UDim2.new(0.075, 0, 0.42, 0)
 SubmitBtn.BackgroundColor3 = Color3.fromRGB(13, 82, 214)
 SubmitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 SubmitBtn.Text = "VERIFICAR KEY"
@@ -64,6 +74,17 @@ SubmitBtn.Font = Enum.Font.GothamBold
 SubmitBtn.TextSize = 14
 Instance.new("UICorner", SubmitBtn).CornerRadius = UDim.new(0, 6)
 SubmitBtn.Parent = KeyFrame
+
+local DiscordBtn = Instance.new("TextButton")
+DiscordBtn.Size = UDim2.new(0.85, 0, 0, 40)
+DiscordBtn.Position = UDim2.new(0.075, 0, 0.62, 0)
+DiscordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242) -- Cor oficial do Discord
+DiscordBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+DiscordBtn.Text = "PEGAR KEY NO DISCORD"
+DiscordBtn.Font = Enum.Font.GothamBold
+DiscordBtn.TextSize = 14
+Instance.new("UICorner", DiscordBtn).CornerRadius = UDim.new(0, 6)
+DiscordBtn.Parent = KeyFrame
 
 local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(1, 0, 0, 20)
@@ -74,22 +95,78 @@ StatusLabel.Font = Enum.Font.Gotham
 StatusLabel.TextSize = 12
 StatusLabel.Parent = KeyFrame
 
-local function checkKeyValid()
-    local savedKey = isfile and isfile("kaizer_saved_key.txt") and readfile("kaizer_saved_key.txt")
-    local savedTime = isfile and isfile("kaizer_saved_time.txt") and tonumber(readfile("kaizer_saved_time.txt"))
-    
-    if savedKey == "NATHAN0276" then
-        return true
-    elseif savedKey == "KAIZER0909" and savedTime then
-        if (os.time() - savedTime) < 86400 then
-            return true
+-- Funcionalidade do Botão do Discord
+DiscordBtn.MouseButton1Click:Connect(function()
+    local success = pcall(function()
+        if setclipboard then
+            setclipboard("https://discord.gg/npmDWxF9b2")
         end
+    end)
+    if success then
+        DiscordBtn.Text = "LINK COPIADO!"
+        DiscordBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+        task.wait(2)
+        DiscordBtn.Text = "PEGAR KEY NO DISCORD"
+        DiscordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+    end
+end)
+
+-- ========================================================
+-- 🗄️ BANCO DE KEYS (50 KEYS DE 24 HORAS) E SEGURANÇA
+-- ========================================================
+local permanentKey = "NATHAN0276"
+local keysDe24Horas = {
+    "KZ-8A9B-2C4D", "KZ-1X7Y-9Z3W", "KZ-5M6N-4P8Q", "KZ-2R3T-1Y7U", "KZ-9F4G-6H5J",
+    "KZ-3K8L-7Z2X", "KZ-6C1V-5B9N", "KZ-4M2Q-8W7E", "KZ-7R5T-3Y1U", "KZ-1I9O-4P6A",
+    "KZ-8S3D-2F5G", "KZ-5H7J-9K1L", "KZ-2Z4X-6C8V", "KZ-9B1N-3M5Q", "KZ-6W8E-7R2T",
+    "KZ-3Y5U-1I4O", "KZ-7P9A-4S6D", "KZ-4F2G-8H1J", "KZ-1K3L-5Z7X", "KZ-8C6V-2B9N",
+    "KZ-5M9Q-3W1E", "KZ-2R4T-7Y6U", "KZ-9I1O-5P8A", "KZ-6S2D-4F7G", "KZ-3H5J-8K9L",
+    "KZ-7Z1X-6C3V", "KZ-4B8N-2M5Q", "KZ-1W7E-9R4T", "KZ-8Y3U-5I2O", "KZ-5P6A-1S9D",
+    "KZ-2F4G-7H3J", "KZ-9K8L-3Z1X", "KZ-6C5V-8B2N", "KZ-3M1Q-4W7E", "KZ-7R9T-2Y5U",
+    "KZ-4I6O-1P8A", "KZ-1S3D-9F5G", "KZ-8H7J-2K4L", "KZ-5Z9X-6C1V", "KZ-2B4N-8M3Q",
+    "KZ-9W1E-5R7T", "KZ-6Y8U-3I2O", "KZ-3P5A-7S9D", "KZ-7F1G-4H6J", "KZ-4K2L-8Z5X",
+    "KZ-1C9V-3B6N", "KZ-8M4Q-2W7E", "KZ-5R1T-9Y3U", "KZ-2I6O-4P8A", "KZ-9S5D-7F1G"
+}
+
+local function isKey24h(key)
+    for _, v in ipairs(keysDe24Horas) do
+        if v == key then return true end
+    end
+    return false
+end
+
+local function getAuthData()
+    if isfile and isfile("kaizer_auth_secure.json") then
+        local success, data = pcall(function() return HttpService:JSONDecode(readfile("kaizer_auth_secure.json")) end)
+        if success and type(data) == "table" then return data end
+    end
+    return { Keys = {}, CurrentKey = nil, HWID = MyHWID }
+end
+
+local function saveAuthData(data)
+    if writefile then
+        pcall(function() writefile("kaizer_auth_secure.json", HttpService:JSONEncode(data)) end)
+    end
+end
+
+local function checkKeyValid()
+    local data = getAuthData()
+    local currentKey = data.CurrentKey
+    
+    if currentKey == permanentKey then return true end
+    if currentKey and isKey24h(currentKey) then
+        -- Checagem de HWID (se o cara passar o arquivo pra outro pc, bloqueia)
+        if data.HWID and data.HWID ~= MyHWID then return false end
+        
+        local expiracao = data.Keys[currentKey]
+        if expiracao and os.time() < expiracao then return true end
     end
     return false
 end
 
 -- ========================================================
--- 🚀 SCRIPT PRINCIPAL
+-- 🚀 SCRIPT PRINCIPAL (O MENU DO KAIZER)
+-- Este código só existe aqui e não pode ser chamado de fora
 -- ========================================================
 local function executeMainScript()
     KeySystemGui:Destroy()
@@ -234,7 +311,7 @@ local function executeMainScript()
         MinimizeKey = Enum.KeyCode.RightControl
     })
 
-    -- BOTÃO FLUTUANTE
+    -- BOTÃO FLUTUANTE UI
     local ToggleGui = Instance.new("ScreenGui")
     ToggleGui.Name = "KaizerMobileToggle"
     ToggleGui.ResetOnSpawn = false
@@ -367,9 +444,7 @@ local function executeMainScript()
         Fluent:Notify({ Title = "Gerado!", Content = "Equipe e clique no chão para ir.", Duration = 4 })
     end})
 
-    -- ========================================================
     -- ABA 3: ÚTEIS
-    -- ========================================================
     Tabs.Utils:AddToggle("AntiAFKToggle", { Title = "Anti-AFK", Default = false }):OnChanged(function(Value) _G.AntiAFK = Value end)
     
     Tabs.Utils:AddSlider("JumpPowerSlider", { Title = "🦘 Pulo (JumpPower)", Default = 50, Min = 50, Max = 200, Rounding = 0,
@@ -423,7 +498,6 @@ local function executeMainScript()
         end
     end)
 
-    -- F1 KART CORRIGIDO COM FÍSICA E ALTURA CERTA
     Tabs.Utils:AddButton({ 
         Title = "🏎️ Gerar Mini Kart (Fórmula 1)", 
         Description = "Veículo estilo F1 para se locomover pelo mapa.", 
@@ -471,27 +545,22 @@ local function executeMainScript()
                 return p, cframeOffset
             end
 
-            -- Chassi Principal (agora posicionado corretamente)
             local chassis = Instance.new("Part")
             chassis.Name = "Chassis"
             chassis.Size = Vector3.new(1.8, 0.5, 6)
             chassis.Color = Color3.fromRGB(200, 30, 30)
             chassis.Material = Enum.Material.SmoothPlastic
             chassis.CanCollide = false
-            chassis.CFrame = hrp.CFrame * CFrame.new(0, -1.0, 0) -- Ajuste de altura aqui (-1.0 em vez de -2.4)
+            chassis.CFrame = hrp.CFrame * CFrame.new(0, -1.0, 0)
             chassis.Parent = kartModel
             kartModel.PrimaryPart = chassis
 
             local partsToWeld = {}
-            -- Asa Dianteira
             table.insert(partsToWeld, {createKartPart("FrontWing", Vector3.new(3.2, 0.2, 1.2), Color3.fromRGB(220, 220, 220), CFrame.new(0, -0.15, -3), false)})
-            -- Asa Traseira
             table.insert(partsToWeld, {createKartPart("RearStrut", Vector3.new(1, 0.8, 0.5), Color3.fromRGB(30, 30, 30), CFrame.new(0, 0.4, 2.6), false)})
             table.insert(partsToWeld, {createKartPart("RearWingTop", Vector3.new(3.2, 0.2, 1.2), Color3.fromRGB(200, 30, 30), CFrame.new(0, 0.8, 2.7), false)})
-            -- Cockpit
             table.insert(partsToWeld, {createKartPart("Cockpit", Vector3.new(1.2, 0.6, 2.5), Color3.fromRGB(220, 220, 220), CFrame.new(0, 0.4, -0.2), false)})
             
-            -- Pneus
             local wheelSize = Vector3.new(1, 1.4, 1.4)
             local wheelColor = Color3.fromRGB(25, 25, 25)
             table.insert(partsToWeld, {createKartPart("WheelFL", wheelSize, wheelColor, CFrame.new(-1.6, 0, -2) * CFrame.Angles(0, 0, math.rad(90)), true)})
@@ -512,7 +581,7 @@ local function executeMainScript()
             local mainWeld = Instance.new("Weld")
             mainWeld.Part0 = hrp
             mainWeld.Part1 = chassis
-            mainWeld.C0 = CFrame.new(0, -1.0, 0.5) -- Ajuste de solda também corrigido
+            mainWeld.C0 = CFrame.new(0, -1.0, 0.5)
             mainWeld.Parent = chassis
 
             humanoid.Sit = true
@@ -747,35 +816,68 @@ local function executeMainScript()
 end
 
 -- ========================================================
--- LOGICA DO BOTÃO DA KEY
+-- BLINDAGEM DO BOTÃO (VERIFICAÇÃO DE KEY)
 -- ========================================================
 SubmitBtn.MouseButton1Click:Connect(function()
     local text = KeyInput.Text
-    if text == "KAIZER0909" then
-        if writefile then
-            writefile("kaizer_saved_key.txt", text)
-            writefile("kaizer_saved_time.txt", tostring(os.time()))
-        end
-        StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-        StatusLabel.Text = "Key Válida (24 Horas)!"
-        task.wait(1)
-        executeMainScript()
-    elseif text == "NATHAN0276" then
-        if writefile then
-            writefile("kaizer_saved_key.txt", text)
-            writefile("kaizer_saved_time.txt", "PERMANENT")
-        end
+    local data = getAuthData()
+    if not data.Keys then data.Keys = {} end
+    
+    if text == permanentKey then
+        data.CurrentKey = text
+        data.HWID = MyHWID
+        saveAuthData(data)
         StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
         StatusLabel.Text = "Key Válida (Permanente)!"
         task.wait(1)
         executeMainScript()
+        
+    elseif isKey24h(text) then
+        local expiracao = data.Keys[text]
+        
+        -- Cenario 1: A Key nunca foi usada
+        if not expiracao then
+            expiracao = os.time() + 86400 -- Hora atual + 24 horas
+            data.Keys[text] = expiracao
+            data.CurrentKey = text
+            data.HWID = MyHWID
+            saveAuthData(data)
+            
+            StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+            StatusLabel.Text = "Key Ativada! Validade: 24 Horas."
+            task.wait(1)
+            executeMainScript()
+            
+        -- Cenario 2: Key dentro do prazo
+        elseif os.time() < expiracao then
+            -- Verifica se o HWID mudou (tentativa de compartilhar conta/arquivo)
+            if data.HWID and data.HWID ~= MyHWID then
+                StatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+                StatusLabel.Text = "Erro HWID: Key ativada em outro aparelho!"
+                return
+            end
+            
+            data.CurrentKey = text
+            saveAuthData(data)
+            
+            StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+            StatusLabel.Text = "Key Reconhecida! Entrando..."
+            task.wait(1)
+            executeMainScript()
+            
+        -- Cenario 3: Key expirada (Chave Queimada)
+        else
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+            StatusLabel.Text = "Esta Key já expirou! Compre outra."
+        end
+        
     else
         StatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-        StatusLabel.Text = "Key Incorreta!"
+        StatusLabel.Text = "Key Inválida ou Incorreta!"
     end
 end)
 
--- SE A KEY JA FOR VALIDA, PULA DIRETO PRO MENU
+-- SE A KEY SALVA AINDA FOR VALIDA, PULA DIRETO PRO MENU
 if checkKeyValid() then
     executeMainScript()
 end
