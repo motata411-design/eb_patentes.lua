@@ -112,9 +112,19 @@ DiscordBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ========================================================
--- 🗄️ BANCO DE KEYS (50 KEYS DE 24 HORAS) E SEGURANÇA
+-- 🗄️ BANCO DE KEYS E SEGURANÇA
 -- ========================================================
-local permanentKey = "NATHAN0276"
+local minhaKeyPrivada = "MEU_USO_DONO_123" -- Sua key permanente secreta (NÃO VENDA ESSA)
+
+-- Novas Keys para você vender (Validade de 30 Dias após a primeira ativação)
+local keysDe30Dias = {
+    "MENSAL-A1B2-C3D4",
+    "MENSAL-X9Y8-Z7W6",
+    "MENSAL-Q1W2-E3R4"
+    -- Adicione mais chaves aqui conforme for vendendo
+}
+
+-- Suas Keys antigas de 24 horas (caso queira dar teste grátis ou venda diária)
 local keysDe24Horas = {
     "KZ-8A9B-2C4D", "KZ-1X7Y-9Z3W", "KZ-5M6N-4P8Q", "KZ-2R3T-1Y7U", "KZ-9F4G-6H5J",
     "KZ-3K8L-7Z2X", "KZ-6C1V-5B9N", "KZ-4M2Q-8W7E", "KZ-7R5T-3Y1U", "KZ-1I9O-4P6A",
@@ -127,6 +137,13 @@ local keysDe24Horas = {
     "KZ-9W1E-5R7T", "KZ-6Y8U-3I2O", "KZ-3P5A-7S9D", "KZ-7F1G-4H6J", "KZ-4K2L-8Z5X",
     "KZ-1C9V-3B6N", "KZ-8M4Q-2W7E", "KZ-5R1T-9Y3U", "KZ-2I6O-4P8A", "KZ-9S5D-7F1G"
 }
+
+local function isKey30d(key)
+    for _, v in ipairs(keysDe30Dias) do
+        if v == key then return true end
+    end
+    return false
+end
 
 local function isKey24h(key)
     for _, v in ipairs(keysDe24Horas) do
@@ -153,9 +170,12 @@ local function checkKeyValid()
     local data = getAuthData()
     local currentKey = data.CurrentKey
     
-    if currentKey == permanentKey then return true end
-    if currentKey and isKey24h(currentKey) then
-        -- Checagem de HWID (se o cara passar o arquivo pra outro pc, bloqueia)
+    -- Se for a sua key de dono, passa direto
+    if currentKey == minhaKeyPrivada then return true end
+    
+    -- Se for uma key de cliente (30 dias ou 24 horas)
+    if currentKey and (isKey24h(currentKey) or isKey30d(currentKey)) then
+        -- Checagem de HWID (impede que o cara compartilhe a key ou o arquivo com outra pessoa)
         if data.HWID and data.HWID ~= MyHWID then return false end
         
         local expiracao = data.Keys[currentKey]
@@ -823,37 +843,42 @@ SubmitBtn.MouseButton1Click:Connect(function()
     local data = getAuthData()
     if not data.Keys then data.Keys = {} end
     
-    if text == permanentKey then
+    -- Cenario 0: Você logando com sua Key de Dono
+    if text == minhaKeyPrivada then
         data.CurrentKey = text
         data.HWID = MyHWID
         saveAuthData(data)
         StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-        StatusLabel.Text = "Key Válida (Permanente)!"
+        StatusLabel.Text = "Acesso de Criador Liberado!"
         task.wait(1)
         executeMainScript()
         
-    elseif isKey24h(text) then
+    -- Cenario 1: Cliente usando Key de 30 Dias ou 24 Horas
+    elseif isKey30d(text) or isKey24h(text) then
         local expiracao = data.Keys[text]
         
-        -- Cenario 1: A Key nunca foi usada
+        -- Se a Key nunca foi usada, ela é ativada agora
         if not expiracao then
-            expiracao = os.time() + 86400 -- Hora atual + 24 horas
+            -- 30 Dias = 2592000 segundos | 24 Horas = 86400 segundos
+            local tempoAdicional = isKey30d(text) and 2592000 or 86400 
+            expiracao = os.time() + tempoAdicional
+            
             data.Keys[text] = expiracao
             data.CurrentKey = text
-            data.HWID = MyHWID
+            data.HWID = MyHWID -- Registra o HWID do celular/PC do cliente
             saveAuthData(data)
             
             StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-            StatusLabel.Text = "Key Ativada! Validade: 24 Horas."
+            StatusLabel.Text = isKey30d(text) and "Key Mensal Ativada (30 Dias)!" or "Key Diária Ativada (24 Horas)!"
             task.wait(1)
             executeMainScript()
             
-        -- Cenario 2: Key dentro do prazo
+        -- Se a Key já foi usada, verifica se ainda está no prazo
         elseif os.time() < expiracao then
-            -- Verifica se o HWID mudou (tentativa de compartilhar conta/arquivo)
+            -- Bloqueia se o HWID for diferente (cliente tentou passar pro amigo)
             if data.HWID and data.HWID ~= MyHWID then
                 StatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-                StatusLabel.Text = "Erro HWID: Key ativada em outro aparelho!"
+                StatusLabel.Text = "Erro: Esta key pertence a outro aparelho!"
                 return
             end
             
@@ -865,10 +890,10 @@ SubmitBtn.MouseButton1Click:Connect(function()
             task.wait(1)
             executeMainScript()
             
-        -- Cenario 3: Key expirada (Chave Queimada)
+        -- Se a Key expirou (passou os 30 dias)
         else
             StatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-            StatusLabel.Text = "Esta Key já expirou! Compre outra."
+            StatusLabel.Text = "Sua assinatura expirou! Compre outra Key."
         end
         
     else
