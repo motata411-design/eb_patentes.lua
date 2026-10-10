@@ -261,16 +261,38 @@ local function executeMainScript()
                             if not role then
                                 local txt = obj.Text:lower()
                                 local rawTxt = obj.Text
-                                if rawTxt:find(Player.Name) or rawTxt:find(Player.DisplayName) then role = "Name"
-                                elseif txt == "n/a" or txt:find("sem divisão") then role = "Division"
-                                elseif txt:find("aspirante") or txt:find("tenente") or txt:find("capitão") or txt:find("coronel") or txt:find("major") or txt:find("general") or txt:find("elite") or txt:find("marechal") or txt:find("recruta") or txt:find("soldado") or txt:find("cabo") or txt:find("sargento") or txt:find("cadete") or txt:find("criador") or txt:find("administrador") or txt:find("supervisor") or txt:find("moderador") or txt:find("sócio") or txt:find("comandante") then role = "Rank"
+                                
+                                -- Identificação mais precisa baseada em tags ou conteúdos comuns
+                                if rawTxt:find(Player.Name) or rawTxt:find(Player.DisplayName) then 
+                                    role = "Name"
+                                else
+                                    -- Verifica se o texto atual já bate com alguma tag de patente ou divisão conhecida
+                                    for _, pat in ipairs(Patentes) do 
+                                        if txt:find(pat.Tag:lower(), 1, true) or txt:find(pat.Nome:lower(), 1, true) then 
+                                            role = "Rank" 
+                                            break 
+                                        end 
+                                    end
+                                    
+                                    if not role then
+                                        for _, div in ipairs(Divisoes) do 
+                                            if txt:find(div.Tag:lower(), 1, true) or (div.Tag ~= "[N/A]" and txt:find(div.Nome:lower(), 1, true)) then 
+                                                role = "Division" 
+                                                break 
+                                            end 
+                                        end
+                                    end
+                                    
+                                    -- Fallback genérico para termos militares caso a tag exata não bata
+                                    if not role then
+                                        if txt == "n/a" or txt:find("sem divisão") then 
+                                            role = "Division"
+                                        elseif txt:find("aspirante") or txt:find("tenente") or txt:find("capitão") or txt:find("coronel") or txt:find("major") or txt:find("general") or txt:find("elite") or txt:find("marechal") or txt:find("recruta") or txt:find("soldado") or txt:find("cabo") or txt:find("sargento") or txt:find("cadete") or txt:find("criador") or txt:find("administrador") or txt:find("supervisor") or txt:find("moderador") or txt:find("sócio") or txt:find("comandante") or txt:find("sub") then 
+                                            role = "Rank"
+                                        end
+                                    end
                                 end
-                                if not role then
-                                    for _, div in ipairs(Divisoes) do if txt:find(div.Tag:lower(), 1, true) then role = "Division" break end end
-                                end
-                                if not role then
-                                    for _, pat in ipairs(Patentes) do if txt:find(pat.Tag:lower(), 1, true) then role = "Rank" break end end
-                                end
+                                
                                 if role then labelRoles[obj] = role end
                             end
                             
